@@ -33,7 +33,7 @@ pmx_installer_id=`curl --request POST "https://api.digitalocean.com/v2/droplets"
      --header "Content-Type: application/json" \
      --header "Authorization: Bearer $ACCESS_TOKEN" \
      --data '{
-      "region":"nyc3",
+      "region":"'$REGION'",
       "image":"coreos-stable",
       "size":"512mb",
       "name":"pmxinstaller",
