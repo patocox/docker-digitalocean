@@ -1,0 +1,55 @@
+#!/bin/bash
+
+#Create the cluster with the above etcd key (no ssh keys)
+cluster_id=`curl https://discovery.etcd.io/new` && echo $cluster_id
+sed -i "s_discovery.*_discovery: ${cluster_id}_g" cloud-config.yaml
+
+#Create the pmx-agent vm with a new etcd key & ssh keys
+echo -e  'y\n'|ssh-keygen -q -t rsa -N '' -f id_rsa
+ssh_key_pub="$(<id_rsa.pub)"
+ssh_key_pri="$(<id_rsa)"
+sed -i "s_ssh-rsa.*_${ssh_key_pub}_g" cloud-config-agent.yaml
+
+# Retrieve SSH ID
+ssh_id=`curl --request GET "https://api.digitalocean.com/v2/account/keys" \
+     --header "Authorization: Bearer $ACCESS_TOKEN" | jq '.ssh_keys[0].id'`
+
+# Create CoreOS Cluster
+coreos_vm_id=`curl --request POST "https://api.digitalocean.com/v2/droplets" \
+     --header "Content-Type: application/json" \
+     --header "Authorization: Bearer $ACCESS_TOKEN" \
+     --data '{
+      "region":"nyc3",
+      "image":"coreos-stable",
+      "size":"'$SIZE'",
+      "name":"coreos",
+      "private_networking":true,
+      "ssh_keys":['$ssh_id'],
+      "user_data": "'"$(cat cloud-config.yaml | sed 's/"/\\"/g')"'"
+}' | jq '.droplet.id'`
+
+# Create PMX Installer node
+pmx_installer_id=`curl --request POST "https://api.digitalocean.com/v2/droplets" \
+     --header "Content-Type: application/json" \
+     --header "Authorization: Bearer $ACCESS_TOKEN" \
+     --data '{
+      "region":"nyc3",
+      "image":"coreos-stable",
+      "size":"512mb",
+      "name":"pmxinstaller",
+      "private_networking":true,
+      "ssh_keys":['$ssh_id']
+}' | jq '.droplet.id'`
+
+echo "Creating CoreOS Cluster and PMX Installer..."
+
+sleep 30
+
+private_ip=`curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer '$ACCESS_TOKEN'' "https://api.digitalocean.com/v2/droplets/$coreos_vm_id" | jq '.droplet.networks.v4[0].ip_address'`
+
+pmx_installer_public_ip=`curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer '$ACCESS_TOKEN'' "https://api.digitalocean.com/v2/droplets/$pmx_installer_id" | jq '.droplet.networks.v4[1].ip_address'`
+
+echo -e "\n\nDigitalOcean CoreOS cluster complete! You can delete this application from Panamax safely. \nTo complete the Panamax Remote Agent Installation, \nSSH into your installer ($ ssh core@$pmx_installer_public_ip) and follow these instructions: \nhttps://github.com/CenturyLinkLabs/panamax-ui/wiki/Panamax-Remote-Agent-Installation"
+echo -e "\nFleet API IP: http://$private_ip:4001"
+echo -e "\nPMX Installer IP: $pmx_installer_public_ip"
+echo -e "\n\n\n$ssh_key_pri\n\n\n"
