@@ -57,13 +57,7 @@ pmx_installer_public_ip=`curl -X GET -H 'Content-Type: application/json' -H 'Aut
 echo -e "\n\nDigitalOcean CoreOS cluster complete! You can delete this application from Panamax safely. \nTo complete the Panamax Remote Agent Installation, \nSSH into your installer ($ ssh core@$pmx_installer_public_ip) and follow these instructions: \nhttps://github.com/CenturyLinkLabs/panamax-ui/wiki/Panamax-Remote-Agent-Installation"
 echo -e "\nFleet API IP: http://$private_ip:4001"
 echo -e "\nPMX Installer IP: $pmx_installer_public_ip"
-echo -e "\n\n\n$ssh_key_pri\n\n\n"
-
-#Creating etcd keys
-etcd_api=http://${ETCD_API}/v2/keys
-curl  --data-urlencode -sL -X PUT $etcd_api/agent-pri-ssh-key -d "value=$ssh_key_pri"
-curl -sL -X PUT $etcd_api/agent-fleet-api -d value=$private_ip
-curl -sL -X PUT $etcd_api/agent-public-ip -d value=$pmx_installer_public_ip
+#echo -e "\n\n\n$ssh_key_pri\n\n\n"
 
 until [ "1" == "0" ];
 do
