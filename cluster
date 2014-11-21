@@ -48,11 +48,19 @@ pmx_installer_id=`curl --request POST "https://api.digitalocean.com/v2/droplets"
 
 echo "Creating CoreOS Cluster and PMX Installer..."
 
-sleep 30
+private_ip=null
+while [[ $private_ip = 'null' ]]; do
+    private_ip=`curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer '$ACCESS_TOKEN'' "https://api.digitalocean.com/v2/droplets/$coreos_vm_id" | jq '.droplet.networks.v4[0].ip_address'`
+    echo $private_ip
+    sleep 3
+done
 
-private_ip=`curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer '$ACCESS_TOKEN'' "https://api.digitalocean.com/v2/droplets/$coreos_vm_id" | jq '.droplet.networks.v4[0].ip_address'`
-
-pmx_installer_public_ip=`curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer '$ACCESS_TOKEN'' "https://api.digitalocean.com/v2/droplets/$pmx_installer_id" | jq '.droplet.networks.v4[1].ip_address'`
+pmx_installer_public_ip=null
+while [[ $pmx_installer_public_ip = 'null' ]]; do
+    pmx_installer_public_ip=`curl -X GET -H 'Content-Type: application/json' -H 'Authorization: Bearer '$ACCESS_TOKEN'' "https://api.digitalocean.com/v2/droplets/$pmx_installer_id" | jq '.droplet.networks.v4[1].ip_address'`
+    echo $pmx_installer_public_ip
+    sleep 3
+done
 
 echo -e "\n\nDigitalOcean CoreOS cluster complete! You can delete this application from Panamax safely. \nTo complete the Panamax Remote Agent Installation, \nSSH into your installer ($ ssh core@$pmx_installer_public_ip) and follow these instructions: \nhttps://github.com/CenturyLinkLabs/panamax-ui/wiki/Panamax-Remote-Agent-Installation"
 echo -e "\nFleet API IP: http://$private_ip:4001"
